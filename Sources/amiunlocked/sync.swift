@@ -14,6 +14,8 @@ private func getISOTimestamp() -> String {
 class Sync {
     private static let config = Config()
     
+    let file = "last-executed.lock"
+    
     enum SyncStatus {
         case pending(nextState: State)
         case success
@@ -42,7 +44,7 @@ class Sync {
         }
     }
     
-    private func sendRequest(state: State, payload: Dictionary<String, Any>, action: String) {
+    private func sendRequest(state: State, payload: Dictionary<String, Any>, action: String, executeOnce: Bool) {
         let r = Just.post(
             Sync.config.url + action,
             json: payload,
@@ -51,6 +53,24 @@ class Sync {
         if r.ok {
             NSLog("Network: request succeeded")
             syncStatus = .success
+            
+            if executeOnce {
+                let df = DateFormatter()
+                df.dateFormat = "yyyy-MM-dd"
+                let today = df.string(from: Date())
+
+                let fileManager = FileManager.default
+                let path = fileManager.currentDirectoryPath
+                
+                let dir = URL(fileURLWithPath: path)
+                let fileURL = dir.appendingPathComponent(file)
+
+                do {
+                    try today.write(to: fileURL, atomically: false, encoding: .utf8)
+                }
+                catch {/* error handling here */}
+            }
+            
         } else {
             NSLog("Network: request failed")
             syncStatus = .failure(retryState: state)
@@ -91,16 +111,19 @@ class Sync {
                         if state.rawValue == automationState {
                             switch action {
                             case "chat.postMessage":
+                                let executeOnce = automationParams["execute_once"] as? Bool ?? false
                                 var phrases = automationParams["phrases"] as? Array<String> ?? Array<String>()
                                 var emojis = automationParams["emojis"] as? Array<String> ?? Array<String>()
                                 
                                 if phrases.count != 0 || emojis.count != 0 {
-                                    phrases.shuffle()
-                                    emojis.shuffle()
-                                    
-                                    let payload = ["channel": channel, "as_user": true, "text": "\(phrases.first!) \(emojis.first!)"] as [String : Any]
-                                    
-                                    sendRequest(state: state, payload: payload, action: action)
+                                    if (executeOnce && !hasExecutedToday()) || !executeOnce {
+                                        phrases.shuffle()
+                                        emojis.shuffle()
+                                        
+                                        let payload = ["channel": channel, "as_user": true, "text": "\(phrases.first!) \(emojis.first!)"] as [String : Any]
+                                        
+                                        sendRequest(state: state, payload: payload, action: action, executeOnce: executeOnce)
+                                    }
                                 }
                             case "users.profile.set":
                                 var phrases = automationParams["phrases"] as? Array<String> ?? Array<String>()
@@ -112,7 +135,7 @@ class Sync {
                                     
                                     let payload = ["profile": ["status_emoji": emojis.first, "status_text": phrases.first]] as [String : Any]
                                     
-                                    sendRequest(state: state, payload: payload, action: action)
+                                    sendRequest(state: state, payload: payload, action: action, executeOnce: false)
                                 }
                             default:
                                 print("Don't know what to do")
@@ -122,5 +145,27 @@ class Sync {
                 }
             }
         }
+    }
+    
+    private func hasExecutedToday() -> Bool {
+        let fileManager = FileManager.default
+        let path = fileManager.currentDirectoryPath
+        
+        let dir = URL(fileURLWithPath: path)
+        let fileURL = dir.appendingPathComponent(file)
+
+        do {
+            let df = DateFormatter()
+            df.dateFormat = "yyyy-MM-dd"
+            let today = df.string(from: Date())
+            
+            let content = try String(contentsOf: fileURL, encoding: .utf8)
+            if content == today {
+                return true
+            }
+        }
+        catch {/* error handling here */}
+        
+        return false
     }
 }
