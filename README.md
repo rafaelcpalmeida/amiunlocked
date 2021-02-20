@@ -1,35 +1,87 @@
-# `amiunlocked`
+# `amiunlocked` Program
 
-A macOS CLI program and website to know whether your computer is unlocked or not. Requires macOS 10.12+.
+A macOS CLI program that listens for screen un/locks and notifies a cloud-based key/value store.
 
-## CLI Program
+- [Installation](#installation)
+  - [Download latest release](#download-latest-release)
+  - [Build from source](#build-from-source)
+- [Setup key/value store](#setup-keyvalue-store)
+- [Configure program](#configure-program)
+- [Set program as background service](#set-program-as-background-service)
 
-View the CLI program's [README.md](./program/README.md) for more information. You can also download binaries for macOS from the [releases](https://github.com/raygesualdo/amiunlocked/releases).
+NOTE: the directions included in rest of the README assume you have cloned the repo and navigated to the `program` directory.
 
-## Website
+<details><summary>Clone Instructions</summary>
+<div>
 
-View the website's [README.md](./website/README.md) for more information. You can also deploy the website directly to Netlify.
+```sh
+git clone <url>
+cd amiunlocked/program
+```
 
-[![Deploy to Netlify](https://www.netlify.com/img/deploy/button.svg)](https://app.netlify.com/start/deploy?repository=https://github.com/raygesualdo/amiunlocked)
+</div>
+</details>
 
-## License
+## Installation
 
-Copyright (c) 2019 Ray Gesualdo
+You can install `amiunlocked` by downloading the latest release or building the binary from source.
 
-Permission is hereby granted, free of charge, to any person obtaining a copy
-of this software and associated documentation files (the "Software"), to deal
-in the Software without restriction, including without limitation the rights
-to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-copies of the Software, and to permit persons to whom the Software is
-furnished to do so, subject to the following conditions:
+### Download latest release
 
-The above copyright notice and this permission notice shall be included in all
-copies or substantial portions of the Software.
+Navigate to the repo [releases page](https://github.com/raygesualdo/amiunlocked/releases) and download the latest release wherever you prefer on your computer.
 
-THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
-OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
-SOFTWARE.
+### Build from source
+
+Building from source requires having the latest Xcode with Swift 5+ installed on your computer. In the `program` directory, run the following commands:
+
+```shell
+swift package update
+swift package generate-xcodeproj
+swift build -c release
+```
+
+The program binary is located at `./.build/release/amiunlocked`. You can leave it there or copy it to another location on your computer.
+
+## Setup key/value store
+
+`amiunlocked` persists your computer's locked/unlocked state using a [kvdb.io](https://kvdb.io/) store called a "bucket". Using the provided `scripts/setupDb.sh` script, take the following steps to create your own bucket:
+
+1. Open `scripts/setupDb.sh`
+2. Generate two random strings for each of the following variables and enter them in the script:
+   - `secretKey`
+   - `api_key`
+3. Save and run `scripts/setupDb.sh`
+4. Copy/paste the output to a safe location. This information cannot be recovered if lost.
+
+## Configure program
+
+Running `amiunlocked` requires two configuration settings: the url to your kvdb bucket (including the "key" of the key/value pair) and the `api_key` to give `amiunlocked` write-access to the bucket. This configuration is kept in a `config.json` file adjacent to the `amiunlocked` binary. You can use `config.json.example` as an example configuration file to get started.
+
+1. Run the following command to create an empty `config.json` file:
+
+   ```sh
+   cp ./config.json.example /directory/container/program/config.json
+   ```
+
+2. Open `config.json`
+3. Fill in `url` with your kvdb bucket URL and the key you will store computer state at. For example, if your kvdb URL is "https://kvdb.io/abcdefg123456" and you are going to use the key "computer-state", the value for `url` would be "https://kvdb.io/abcdefg123456/computer-state".
+4. Fill in `api_key` with the value generated for the [Setup key/value store](#setup-keyvalue-store) step
+5. Save and close the file
+
+## Set program as background service
+
+`amiunlocked` can be configured using LaunchAgents. Take the following steps to set it up:
+
+```shell
+cd scripts
+./createPlistFile.sh
+# Provide the amiunlocked binary path to the script
+./installPlistFile.sh
+```
+
+That's it. You can verify the process was installed as a LaunchAgent using the following command:
+
+```shell
+tail -f /tmp/com.amiunlocked.startup.stderr
+# [2019-08-14 09:37:54.734 amiunlocked[3241:22125] Process: started
+```

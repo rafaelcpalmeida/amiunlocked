@@ -1,0 +1,35 @@
+{
+  "url": "https://slack.com/api/",
+  "api_key": "",
+  "automations": [
+    {
+      "morning": {
+        "state": "unlocked",
+        "action": "chat.postMessage",
+        "channel": "general",
+        "starts": "08:30",
+        "ends": "10:00",
+        "emojis": [":wave:, :+1:"],
+        "phrases": ["Hey", "Hi", "Hello"]
+      },
+      "go2lunch": {
+        "state": "locked",
+        "action": "users.profile.set",
+        "channel": "general",
+        "starts": "12:15",
+        "ends": "14:30",
+        "emojis": [":fried_egg:", ":cut_of_meat:", ":sweet_potato:", ":fondue:", ":pizza:", ":sushi:"],
+        "phrases": [""]
+      },
+      "return2work": {
+        "state": "unlocked",
+        "action": "users.profile.set",
+        "channel": "general",
+        "starts": "12:15",
+        "ends": "14:30",
+        "emojis": [":grin:"],
+        "phrases": [""]
+      }
+    }
+  ]
+}
