@@ -67,7 +67,7 @@ class Sync {
         
         let weekday = calendar.dateComponents([.weekday], from: startOfToday)
         
-        if weekday.weekday! > 1 && weekday.weekday! < 8 {
+        if weekday.weekday! > 1 && weekday.weekday! < 7 {
             let dateFormatter = DateFormatter()
             dateFormatter.dateFormat = "HH:mm"
             
